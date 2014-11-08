@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>Common.Logging.Elmah.v2</id>
+    <version>1.0.0</version>
+    <authors>mperdeck</authors>
+    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+    <projectUrl>https://github.com/mperdeck/Common.Logging.Elmah.v2</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Common Logging Adapter for Elmah. Unlike similar packages, logs the HttpContext if that is available.</description>
+    <language>en-US</language>
+    <tags>elmah common logging adapter</tags>
+    <dependencies>
+      <dependency id="Common.Logging" />
+      <dependency id="elmah" />
+    </dependencies>
+  </metadata>
+  <files>
+	<file src="NuGet\app.config.transform" target="content\app.config.transform" />
+    <file src="NuGet\web.config.transform" target="content\web.config.transform" />  	
+  </files>
+</package>
+
+
+
