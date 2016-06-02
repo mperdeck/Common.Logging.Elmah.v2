@@ -12,7 +12,7 @@
     <tags>elmah common logging adapter</tags>
     <dependencies>
       <dependency id="Common.Logging" />
-      <dependency id="elmah" />
+      <dependency id="elmah.corelibrary" />
     </dependencies>
   </metadata>
   <files>
