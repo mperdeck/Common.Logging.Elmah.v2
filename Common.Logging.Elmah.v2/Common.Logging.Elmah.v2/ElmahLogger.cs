@@ -2,6 +2,7 @@
 using Common.Logging.Factory;
 using System.Web;
 using Elmah;
+using System.Reflection;
 
 namespace Common.Logging.Elmah.v2
 {
@@ -103,22 +104,116 @@ namespace Common.Logging.Elmah.v2
             if (logLevel < _minLevel) 
                 return;
 
-            var error = exception == null ? new Error() : new Error(exception);
-            error.Message = message == null ? null : message.ToString();
-            error.Type = logLevel.ToString();
-            error.Time = DateTime.Now;
+            var context = HttpContext.Current;
+
+            Error error = null;
+            string _message = message == null ? null : message.ToString();
 
             try
             {
-                var context = HttpContext.Current;
-                var messageException = new Exception((string)message);
-                ErrorSignal.FromCurrentContext().Raise(messageException, context);
+                error = exception == null ? new Error(new Exception(_message), context) : new Error(exception, context);
+            }
+            catch
+            {
+            }
+
+            if (error == null || context == null)
+            {
+                error = exception == null ? new Error(new Exception()) : new Error(exception);
+            }
+
+            error.Message = _message;
+            error.Type = error.Type ?? logLevel.ToString();
+
+            if (exception == null && logLevel < LogLevel.Error)
+            {
+                //remove all exception details
+                error.Type = logLevel.ToString();
+                error.Detail = string.Empty; //_message;
+                error.Source = string.Empty;
+
+                try
+                {
+                    //try remove the dummy exception itself using reflection
+                    var _exceptionField = error.GetType().GetField("_exception", BindingFlags.GetField 
+                        | BindingFlags.NonPublic | BindingFlags.Public);
+
+                    _exceptionField.SetValue(error, null);
+                }
+                catch
+                {
+
+                }
+            }
+
+            string appName = _errorLog.ApplicationName;
+            bool appNameNotFromErrorLog = false;
+
+            if (string.IsNullOrWhiteSpace(appName) || appName == "/")
+            {
+                //something went wrong in error log. it's a bug.
+                //try this
+                appName = HttpRuntime.AppDomainAppId;
+                appNameNotFromErrorLog = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(appName) || appName == "/")
+            {
+                //something went wrong in httpruntime appdomainappid
+                //try this
+
+                try
+                {
+                    //usually, Asp.Net would separate the app name from the domain id with a -
+                    appName = HttpRuntime.AppDomainId.Substring(0, HttpRuntime.AppDomainId.IndexOf("-"));
+                    appNameNotFromErrorLog = true;
+                }
+                catch
+                {
+
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(appName) || appName == "/")
+            {
+                appName = string.Empty;
+            }
+
+            if (appNameNotFromErrorLog && !string.IsNullOrEmpty(appName))
+            {
+                try
+                {
+                    _errorLog.ApplicationName = appName;
+                }
+                catch
+                {
+                    //try to use reflection
+                    try
+                    {
+                        var _appNameField = _errorLog.GetType().GetField("_appName", BindingFlags.GetField
+                            | BindingFlags.NonPublic | BindingFlags.Public);
+
+                        _appNameField.SetValue(_errorLog, appName);
+                    }
+                    catch
+                    {
+
+                    }
+                }
+            }
+
+            error.ApplicationName = appName; //always do this, without which, error would only log to db and not show under Elmah.axd
+
+            try
+            {
+                _errorLog.Log(error);
             }
             catch (Exception ex)
             {
                 try
                 {
-                    _errorLog.Log(error);
+                    var messageException = new Exception((string)message, exception);
+                    ErrorSignal.FromCurrentContext().Raise(messageException, context);
                 }
                 catch (Exception ex2)
                 {
